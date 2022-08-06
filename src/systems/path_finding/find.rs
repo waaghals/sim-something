@@ -1,4 +1,6 @@
 use std::cmp::{max, min};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{BuildHasher, BuildHasherDefault, Hasher};
 use std::mem;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -8,9 +10,11 @@ use bevy::utils::hashbrown::HashMap;
 use bevy::utils::Instant;
 use bevy::{log, prelude::*};
 use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
+use bevy_inspector_egui::egui::remap;
 use futures_lite::future;
 use pathfinding::prelude::*;
 
+use crate::components::dna::Dna;
 use crate::components::path_finding::grid::Walkable;
 use crate::components::path_finding::path::*;
 use crate::map::world2d_to_grid;
@@ -21,6 +25,7 @@ use super::{DIAGONAL_COST, STRAIGHT_COST};
 struct PathFindingRequest {
     from: UVec2,
     to: UVec2,
+    seed: u64,
 }
 
 #[derive(Default)]
@@ -45,9 +50,9 @@ impl PathFindingRequests {
 
 pub fn schedule_new_path_finding(
     mut path_finding_tasks: ResMut<PathFindingRequests>,
-    destination_query: Query<(Entity, &Destination, &Transform), Added<Destination>>,
+    destination_query: Query<(Entity, &Destination, &Transform, &Dna), Added<Destination>>,
 ) {
-    for (entity, destination, transform) in destination_query.iter() {
+    for (entity, destination, transform, dna) in destination_query.iter() {
         let current_tile = world2d_to_grid(&transform.translation.truncate());
 
         path_finding_tasks.request(
@@ -55,6 +60,7 @@ pub fn schedule_new_path_finding(
             PathFindingRequest {
                 from: current_tile,
                 to: destination.0,
+                seed: dna.0,
             },
         );
 
@@ -84,9 +90,16 @@ pub fn calculate_paths(
         let thread_mesh = navigation.clone();
         let walkable_tiles = walkable_tiles.clone();
         let task = pool.spawn(async move {
+            // TODO share BuildHasherDefault for each call to successors
             astar(
                 &request.from,
-                |node| neighbours(&thread_map, &walkable_tiles, thread_mesh.clone(), *node),
+                |node| {
+                    add_entity_tie_breaker(
+                        request.seed,
+                        BuildHasherDefault::<DefaultHasher>::default(),
+                        neighbours(&thread_map, &walkable_tiles, thread_mesh.clone(), *node),
+                    )
+                },
                 |node| heuristic(node, &request.to),
                 |node| node.x == request.to.x && node.y == request.to.y,
             )
@@ -126,9 +139,31 @@ fn heuristic(from: &UVec2, to: &UVec2) -> u32 {
     STRAIGHT_COST * max(dx, dy) + (DIAGONAL_COST - STRAIGHT_COST) * min(dx, dy)
 }
 
+fn add_entity_tie_breaker<H, I>(
+    seed: u64,
+    hasher_builder: H,
+    moves: I,
+) -> impl Iterator<Item = (UVec2, u32)>
+where
+    H: BuildHasher,
+    I: IntoIterator<Item = (UVec2, u32)>,
+{
+    moves.into_iter().map(move |(position, weight)| {
+        let mut hasher = hasher_builder.build_hasher();
+        hasher.write_u32(position.x);
+        hasher.write_u32(position.y);
+        hasher.write_u64(seed);
+        let hash: f64 = (hasher.finish() as u32).into();
+        // TODO implement own remap
+        let tie_breaker = remap(hash, 0.0f64..=f64::MAX, 0.0f64..=10.0f64) as u32;
+
+        (position, weight + tie_breaker)
+    })
+}
+
 fn neighbours(
     storage: &TileStorage,
-    walkable: &Vec<Entity>,
+    walkable: &[Entity],
     mesh: Arc<Mutex<NavMesh>>,
     current: UVec2,
 ) -> Vec<(UVec2, u32)> {
@@ -142,44 +177,42 @@ fn neighbours(
             match storage.get(&tile_pos) {
                 Some(current_entity) => {
                     if walkable.contains(&current_entity) {
-                        // let neighbors = storage.get_tile_neighbors(&tile_pos);
                         let [north, south, west, east, northwest, northeast, southwest, southeast] =
                             storage.get_neighboring_pos(&tile_pos);
-                        for straight_neighbour in [north, south, west, east] {
-                            if let Some(neighbour) = straight_neighbour {
-                                if let Some(neighbour_entity) = storage.get(&neighbour) {
-                                    if walkable.contains(&neighbour_entity) {
-                                        nav_mesh.insert(
-                                            current,
-                                            Move {
-                                                destination: neighbour.into(),
-                                                cost: STRAIGHT_COST,
-                                            },
-                                        );
-                                        neighbours.push(Move {
+                        for neighbour in [north, south, west, east].into_iter().flatten() {
+                            if let Some(neighbour_entity) = storage.get(&neighbour) {
+                                if walkable.contains(&neighbour_entity) {
+                                    nav_mesh.insert(
+                                        current,
+                                        Move {
                                             destination: neighbour.into(),
                                             cost: STRAIGHT_COST,
-                                        });
-                                    }
+                                        },
+                                    );
+                                    neighbours.push(Move {
+                                        destination: neighbour.into(),
+                                        cost: STRAIGHT_COST,
+                                    });
                                 }
                             }
                         }
-                        for diagonal_neighbour in [northwest, northeast, southwest, southeast] {
-                            if let Some(neighbour) = diagonal_neighbour {
-                                if let Some(neighbour_entity) = storage.get(&neighbour) {
-                                    if walkable.contains(&neighbour_entity) {
-                                        nav_mesh.insert(
-                                            current,
-                                            Move {
-                                                destination: neighbour.into(),
-                                                cost: DIAGONAL_COST,
-                                            },
-                                        );
-                                        neighbours.push(Move {
+                        for neighbour in [northwest, northeast, southwest, southeast]
+                            .into_iter()
+                            .flatten()
+                        {
+                            if let Some(neighbour_entity) = storage.get(&neighbour) {
+                                if walkable.contains(&neighbour_entity) {
+                                    nav_mesh.insert(
+                                        current,
+                                        Move {
                                             destination: neighbour.into(),
                                             cost: DIAGONAL_COST,
-                                        });
-                                    }
+                                        },
+                                    );
+                                    neighbours.push(Move {
+                                        destination: neighbour.into(),
+                                        cost: DIAGONAL_COST,
+                                    });
                                 }
                             }
                         }
