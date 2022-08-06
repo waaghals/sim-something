@@ -62,10 +62,10 @@ pub fn schedule_new_path_finding(
 // TODO in new system, upon a new-map event, remove the Path component from all entities that have it
 pub fn calculate_paths(
     mut commands: Commands,
-    pool: Res<AsyncComputeTaskPool>,
     navigation: Res<Navigation>,
     mut path_finding_tasks: ResMut<PathFindingRequests>,
 ) {
+    let pool = AsyncComputeTaskPool::get();
     let now = Instant::now();
     let max_duration = Duration::from_millis(1);
     let requests = path_finding_tasks.take();

@@ -1,4 +1,4 @@
-use bevy::{core::Time, input::Input, math::Vec3, prelude::*, render::camera::Camera};
+use bevy::{input::Input, math::Vec3, prelude::*, render::camera::Camera};
 use tracing::{span, Level};
 
 pub struct CameraPlugin;
@@ -12,7 +12,7 @@ impl Plugin for CameraPlugin {
 
 fn add_camera(mut commands: Commands) {
     commands
-        .spawn_bundle(OrthographicCameraBundle::new_2d())
+        .spawn_bundle(Camera2dBundle::default())
         .insert(Name::new("Main Camera"));
 }
 

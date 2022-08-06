@@ -1,0 +1,46 @@
+on: [push]
+
+name: Build
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: "x86_64-unknown-linux-gnu"
+            os: "ubuntu-latest"
+            name: "64-bit Linux"
+          - target: "x86_64-pc-windows-msvc"
+            os: "windows-latest"
+            name: "64-bit MSVC"
+          # - target: "aarch64-unknown-linux-gnu"
+          #   os: "ubuntu-latest"
+          #   name: "ARM64 Linux"
+          - target: "x86_64-apple-darwin"
+            os: "macos-latest"
+            name: "64-bit macOS"
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-build-stable-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+        if: runner.os == 'linux'
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --release
+      - uses: actions/upload-artifact@v3
+        name: Upload
+        with:
+          name: ${{ matrix.name }}
+          path: target/${{ matrix.target }}/release/sim-something
