@@ -32,7 +32,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Install dependencies
-        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev
+        run: sudo apt-get update; sudo apt-get install libx11-dev libasound2-dev libudev-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb1-dev libxkbcommon-dev
         if: runner.os == 'linux'
       - uses: Swatinem/rust-cache@v1
         name: Configure caching

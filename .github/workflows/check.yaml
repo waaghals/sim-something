@@ -9,12 +9,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout
-      - uses: actions-rs/toolchain@v1
-        name: Configure toolchain
-        with:
-          toolchain: stable
-          components: clippy
-          override: true
       - uses: actions-rs/clippy-check@v1
         name: Run Clippy
         with:
