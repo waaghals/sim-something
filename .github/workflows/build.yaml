@@ -25,6 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-build-stable-${{ hashFiles('**/Cargo.toml') }}
       - uses: actions-rs/toolchain@v1
         name: Configure toolchain
         with:
@@ -32,16 +41,10 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Install dependencies
-        run: sudo apt-get update; sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb1-dev libxkbcommon-dev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
         if: runner.os == 'linux'
-      - uses: Swatinem/rust-cache@v1
-        name: Configure caching
-      - uses: actions-rs/cargo@v1
-        name: Build
-        with:
-          use-cross: true
-          command: build
-          args: --target ${{ matrix.target }} --release
+      - name: Build
+        run: cargo build --target ${{ matrix.target }} --release
       - uses: actions/upload-artifact@v3
         name: Upload
         with:
