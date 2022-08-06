@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy_mouse_tracking_plugin::MousePosPlugin;
 
 use debug::DebugPlugin;
+use systems::map::set_texture_filters_to_nearest;
 
 use crate::actor::ActorPlugin;
 use camera::CameraPlugin;
@@ -46,6 +47,7 @@ fn main() {
         .add_plugin(PathFindingPlugin)
         .add_plugin(CameraPlugin)
         .add_plugin(TileMapPlugin)
+        .add_system(set_texture_filters_to_nearest)
         .add_plugin(DebugPlugin)
         .add_plugin(SteeringPlugin)
         .add_plugin(MousePosPlugin::SingleCamera)

@@ -31,11 +31,15 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
+      - name: Install dependencies
+        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev
+        if: runner.os == 'linux'
       - uses: Swatinem/rust-cache@v1
         name: Configure caching
       - uses: actions-rs/cargo@v1
         name: Build
         with:
+          use-cross: true
           command: build
           args: --target ${{ matrix.target }} --release
       - uses: actions/upload-artifact@v3

@@ -1,7 +1,7 @@
 use bevy::{log, prelude::*};
 use bevy_ecs_tilemap::{
-    map::Tilemap2dSize,
-    tiles::{Tile2dStorage, TilePos2d},
+    map::TilemapSize,
+    tiles::{TilePos, TileStorage},
 };
 use futures_lite::future;
 use tracing::{span, Level};
@@ -17,7 +17,7 @@ use super::find::Navigation;
 pub fn calculate_new_nav_mesh(
     mut navigation: ResMut<Navigation>,
     keyboard_input: Res<Input<KeyCode>>,
-    map_query: Query<(&Tile2dStorage, &Tilemap2dSize)>,
+    map_query: Query<(&TileStorage, &TilemapSize)>,
     walkable_query: Query<&Walkable>,
 ) {
     if !keyboard_input.just_pressed(KeyCode::M) {
@@ -36,7 +36,7 @@ pub fn calculate_new_nav_mesh(
     while x < size.x {
         while y < size.y {
             log::error!("Checking position x: {} y: {}", x, y);
-            let pos = TilePos2d { x, y };
+            let pos = TilePos { x, y };
             match storage.get(&pos) {
                 None => {
                     log::error!("Storage does not contain position {:#?}", &pos);

@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::map::{
-    Tilemap2dGridSize, Tilemap2dSize, Tilemap2dTextureSize, Tilemap2dTileSize, TilemapId,
-    TilemapTexture,
+    TilemapGridSize, TilemapId, TilemapSize, TilemapTexture, TilemapTextureSize, TilemapTileSize,
 };
-use bevy_ecs_tilemap::tiles::{Tile2dStorage, TileBundle, TilePos2d, TileTexture};
-use bevy_ecs_tilemap::{Tilemap2dPlugin, TilemapBundle};
+use bevy_ecs_tilemap::tiles::{TileBundle, TilePos, TileStorage, TileTexture};
+use bevy_ecs_tilemap::{TilemapBundle, TilemapPlugin};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -18,15 +17,15 @@ impl Plugin for TileMapPlugin {
         app.add_startup_system(create_map)
             .add_system(update_tile_storage)
             // .add_system_to_stage(CoreState::PostUpdate, remove_tiles_from_storage)
-            .add_plugin(Tilemap2dPlugin);
+            .add_plugin(TilemapPlugin);
     }
 }
 
 // TODO store previous position in another component to be able to
 // synthesize a pos for deletion from the storage?
 fn remove_tiles_from_storage(
-    removals: RemovedComponents<TilePos2d>,
-    mut map_query: Query<&mut Tile2dStorage>,
+    removals: RemovedComponents<TilePos>,
+    mut map_query: Query<&mut TileStorage>,
 ) {
     for _map in map_query.iter_mut() {}
     for _entity in removals.iter() {}
@@ -34,8 +33,8 @@ fn remove_tiles_from_storage(
 
 fn update_tile_storage(
     mut commands: Commands,
-    tiles_query: Query<(Entity, &TilePos2d, &TilemapId), Changed<TilePos2d>>,
-    mut map_query: Query<&mut Tile2dStorage>,
+    tiles_query: Query<(Entity, &TilePos, &TilemapId), Changed<TilePos>>,
+    mut map_query: Query<&mut TileStorage>,
 ) {
     for (tile_entity, tile_position, tile_map) in tiles_query.iter() {
         if let Ok(mut map) = map_query.get_mut(tile_map.0) {
@@ -64,20 +63,20 @@ fn create_map_entity(
     texture_handle: Handle<Image>,
     _z_index: f32,
 ) -> Entity {
-    let tilemap_size = Tilemap2dSize {
+    let tilemap_size = TilemapSize {
         x: MAP_SIZE as u32,
         y: MAP_SIZE as u32,
     };
-    let tile_size = Tilemap2dTileSize { x: 16.0, y: 16.0 };
+    let tile_size = TilemapTileSize { x: 16.0, y: 16.0 };
 
     let map = commands
         .spawn()
         .insert(Name::from(name))
         .insert_bundle(TilemapBundle {
-            grid_size: Tilemap2dGridSize { x: 16.0, y: 16.0 },
+            grid_size: TilemapGridSize { x: 16.0, y: 16.0 },
             size: tilemap_size,
-            storage: Tile2dStorage::empty(tilemap_size),
-            texture_size: Tilemap2dTextureSize { x: 96.0, y: 16.0 },
+            storage: TileStorage::empty(tilemap_size),
+            texture_size: TilemapTextureSize { x: 96.0, y: 16.0 },
             texture: TilemapTexture(texture_handle),
             tile_size: tile_size,
             transform: Transform {
@@ -101,7 +100,7 @@ fn create_tile_entities(commands: &mut Commands, file: File, map: Entity) {
             for (x, char) in line.chars().enumerate() {
                 let mut entity = commands.spawn();
                 entity.insert_bundle(TileBundle {
-                    position: TilePos2d {
+                    position: TilePos {
                         x: x as u32,
                         y: y as u32,
                     },
