@@ -43,4 +43,4 @@ jobs:
         name: Upload
         with:
           name: ${{ matrix.name }}
-          path: target/${{ matrix.target }}/release
+          path: target/${{ matrix.target }}/release/sim-something
