@@ -11,15 +11,15 @@ jobs:
           - target: "x86_64-unknown-linux-gnu"
             os: "ubuntu-latest"
             name: "64-bit Linux"
-          - target: "x86_64-pc-windows-msvc"
-            os: "windows-latest"
-            name: "64-bit MSVC"
+          # - target: "x86_64-pc-windows-msvc"
+          #   os: "windows-latest"
+          #   name: "64-bit MSVC"
           - target: "aarch64-unknown-linux-gnu"
             os: "ubuntu-latest"
             name: "ARM64 Linux"         
-          - target: "x86_64-apple-darwin"
-            os: "macos-latest"
-            name: "64-bit macOS"        
+          # - target: "x86_64-apple-darwin"
+          #   os: "macos-latest"
+          #   name: "64-bit macOS"        
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -32,7 +32,7 @@ jobs:
           target: ${{ matrix.target }}
           override: true
       - name: Install dependencies
-        run: sudo apt-get update; sudo apt-get install libx11-dev libasound2-dev libudev-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb1-dev libxkbcommon-dev
+        run: sudo apt-get update; sudo apt-get install g++ pkg-config libx11-dev libasound2-dev libudev-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb1-dev libxkbcommon-dev
         if: runner.os == 'linux'
       - uses: Swatinem/rust-cache@v1
         name: Configure caching
