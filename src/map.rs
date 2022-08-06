@@ -83,11 +83,6 @@ fn create_map_entity(
                 translation: Vec3::ZERO,
                 ..Default::default()
             },
-            // transform: bevy_ecs_tilemap::helpers::get_centered_transform_2d(
-            //     &tilemap_size,
-            //     &tile_size,
-            //     z_index,
-            // ),
             ..Default::default()
         })
         .id();
